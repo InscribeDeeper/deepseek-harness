@@ -1,0 +1,27 @@
+services:
+  dsh:
+    build:
+      context: .
+      args:
+        # npm dist-tag or exact version; `alpha` tracks the prerelease line.
+        DSH_VERSION: ${DSH_VERSION:-alpha}
+    image: dsh-web:local
+    container_name: dsh-web
+    restart: unless-stopped
+    # Loopback-only on the host: the Web UI runs commands with the container
+    # user's authority and has no TLS or proxy contract of its own.
+    ports:
+      - "127.0.0.1:${DSH_PORT:-3080}:3080"
+    environment:
+      # Read per request through the credentials seam; the Models page can set
+      # it instead, and that setting outlives the container in DSH_HOME.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-}
+      DSH_PERMISSION_MODE: ${DSH_PERMISSION_MODE:-workspace-write}
+    volumes:
+      # Sessions, settings, credentials, profiles. Without it every session dies
+      # with the container.
+      - ./data/dsh-home:/data/dsh
+      # The workspace the agent reads and edits. It is also the blast radius.
+      - ${DSH_WORKSPACE:-./data/workspace}:/workspace
+    stop_grace_period: 30s
