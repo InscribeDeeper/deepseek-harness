@@ -43,6 +43,26 @@ dsh: MISSING_CREDENTIAL: llm-deepseek: no API key for provider route "deepseek-o
 
 `DSH_PERMISSION_MODE` 控制文件策略：`read-only` / `workspace-write`（默认，越界要审批）/ `danger-full-access`（不问）。
 
+## 用 kris-agent 的本地模型代替 DeepSeek
+
+`llm-pi-ai` 适配器接任何 OpenAI 兼容端点，kris-agent 的 `/v1/chat/completions` 正好是，且透传 `tools` / `tool_choice`（`kris-agent/src/openai.js:24`），流式也转发 tool_calls delta。
+
+已验证可用的接法（`data/dsh-home/settings.yaml` + `cordis.patch.yml` 就是这套）：
+
+- baseURL 走 `http://agent.kris-home/v1`。容器里没装 kris-home 私有 CA，443 会 `UNABLE_TO_VERIFY_LEAF_SIGNATURE`；8790 直连从容器网段也过不去；nginx 的 80 是通的。
+- key 用 `ka_...`，以 `KRIS_AGENT_KEY` 环境变量名被 settings 引用，密钥本身只在 `.env` 里。
+- 模型填**真实模型名**（`qwen2.5:14b-instruct-16384`），不要填 profile id —— profile 会插入自己的 system prompt 并注入知识库检索结果，污染 harness 的提示词。key 上绑定的模型在 OpenAI 路由不生效，以请求里的 `model` 为准。
+- `compat` 两项必须写：Ollama 不认 `role:"developer"`，也只认 `max_tokens`。
+
+**模型选择是硬约束**，实测：
+
+| 模型 | tool_calls | 结论 |
+|---|---|---|
+| `qwen2.5:14b-instruct-16384` | 正常返回 | 可用，dsh 的读文件 / bash / 写文件全跑通 |
+| `deepseek-r1:7b` | 返回 null，只吐白话「我无法访问文件」 | 不可用 |
+
+16k 上下文仍是天花板：system prompt + 全套工具定义就占掉一大块，任务一大 Ollama 会**静默截断**，症状是不调工具、把 tool call 写成文本、瞎编。
+
 ## 需要知道的边界
 
 - 镜像里没有浏览器，所以固定用 `--no-open`；URL 打印给宿主看。
