@@ -20,6 +20,9 @@ services:
       DSH_PERMISSION_MODE: ${DSH_PERMISSION_MODE:-workspace-write}
       # Referenced by name from settings.yaml (llm-pi-ai apiKeyEnv), resolved per request.
       KRIS_AGENT_KEY: ${KRIS_AGENT_KEY:-}
+    # dsh 按 Host 头做浏览器信任围栏；不声明这个 authority 的话，经 nginx 过来的
+    # 每个 /api 请求都会 403（页面能开，功能全废）。两个名字各算一个 authority。
+    command: ["--trusted-host", "dsh.kris-home", "--trusted-host", "dsh.kris-home.dev"]
     volumes:
       # Sessions, settings, credentials, profiles. Without it every session dies
       # with the container.
