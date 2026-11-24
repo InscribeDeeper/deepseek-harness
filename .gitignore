@@ -1,5 +1,9 @@
 CLAUDE.local.md
+# 密钥：.env 及其变体 / 备份都不进库（*.env 也算）；模板 *.example 要进库
 .env
+.env.*
+*.env
+!.env*.example
 node_modules/
 lib/
 *.tsbuildinfo
